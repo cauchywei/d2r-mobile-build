@@ -4,7 +4,7 @@
 
 Build an unsigned IPA and matching Data resources in your own private GitHub repository, using the **NO_XCODE** approach from [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile).
 
-The build downloads the base game and update through a torrent, reads extraction keys from a ZIP archive, builds the IPA, and exports 18 `.data` files. Game files and keys must be supplied by you and authorized for your use.
+The build downloads the base game and update through the torrent configured below, reads extraction keys from a ZIP archive, builds the IPA, and exports 18 `.data` files. Use this configuration only if you are authorized to use the game files and keys.
 
 ## 1. Create a private repository
 
@@ -14,7 +14,7 @@ Continue in **your new repository**. Open **Actions** and enable workflows if pr
 
 ## 2. Add one Secret
 
-Open **Settings → Secrets and variables → Actions → New repository secret**. Name it **`GAME_INPUT_MANIFEST`** and paste the following JSON, replacing the two URLs and two SHA256 values:
+Open **Settings → Secrets and variables → Actions → New repository secret**. Name it **`GAME_INPUT_MANIFEST`** and paste the complete JSON below. The download URLs and SHA256 values are already filled in; no replacements are needed:
 
 ```json
 {
@@ -22,30 +22,26 @@ Open **Settings → Secrets and variables → Actions → New repository secret*
   "files": [
     {
       "name": "game.torrent",
-      "url": "https://example.com/game.torrent",
-      "sha256": "REPLACE_WITH_TORRENT_SHA256",
-      "select": [1, 2]
+      "url": "https://gamegula.com/index.php?do=download&id=405",
+      "sha256": "016f7c907deb1f4cd6098a7cd06823907a589ff2502aa2c8b341a89ccf984266",
+      "select": [
+        1,
+        2
+      ]
     }
   ],
   "key_archive": {
-    "url": "https://example.com/keys.zip",
-    "sha256": "REPLACE_WITH_KEY_ARCHIVE_SHA256"
+    "url": "https://drive.google.com/uc?export=download&id=147IsDRRJNF_VMT6Fj50glrnqAeb7oR_1",
+    "sha256": "b73573af5eae6c9f7739ca9931cebf04774cf2ba9d6ee98f2f04c2dc88fca71c"
   }
 }
 ```
 
-| Value to replace | What to supply |
-| --- | --- |
-| `files[0].url` | HTTPS direct download URL for your `.torrent` file |
-| `files[0].sha256` | Actual 64-character hexadecimal SHA256 of the `.torrent` file |
-| `key_archive.url` | HTTPS direct download URL for your ZIP containing exactly one `prod.keys` file |
-| `key_archive.sha256` | Actual 64-character hexadecimal SHA256 of that ZIP |
+The torrent is downloaded from GameGula; the key ZIP is downloaded from Google Drive. Both URLs have been checked by downloading the files and matching their pinned SHA256 values. The ZIP contains one `prod.keys` file.
 
 The torrent's **file 1 must be the base NSP, and file 2 the `1.0.34.0` (`v2228224`) update NSP**, matching `select: [1, 2]`. Only those two entries are downloaded. The resulting internal game version must be **`3.3.94012`**. Upstream requires the Reign of the Warlock expansion.
 
-URLs must return files directly and remain valid until downloading finishes. Local paths, login pages, CAPTCHA pages, and file-hosting landing pages cannot be used. Keep your own file URLs in the Secret; do not commit game files or keys. The key ZIP is read temporarily and deleted; it is not cached or uploaded as an output.
-
-Obtain each SHA256 with `shasum -a 256 filename` on macOS or `sha256sum filename` on Linux. Hash the `.torrent` and key ZIP themselves.
+Keep this configuration in the Secret. Do not commit game files or keys. The key ZIP is read temporarily and deleted; it is not cached or uploaded as an output.
 
 ## 3. Run the two workflows
 

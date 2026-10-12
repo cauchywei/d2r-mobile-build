@@ -4,7 +4,7 @@
 
 基于 [jhaizhou-ops/d2r-mobile](https://github.com/jhaizhou-ops/d2r-mobile) 的 **NO_XCODE** 方案，在自己的 GitHub 私有仓库中构建未签名 IPA 和配套 Data 资源。
 
-流程通过 BT 种子下载本体与更新，从 ZIP 归档读取解包密钥，生成 IPA 并导出 18 个 `.data` 文件。游戏文件和密钥由使用者自行提供，并需有权使用。
+流程使用下方配置中的 BT 种子下载本体与更新，从 ZIP 归档读取解包密钥，生成 IPA 并导出 18 个 `.data` 文件。使用前请确保有权使用这些游戏文件与密钥。
 
 ## 1. 创建私有仓库
 
@@ -14,7 +14,7 @@
 
 ## 2. 配置一个 Secret
 
-进入 **Settings → Secrets and variables → Actions → New repository secret**，名称填写 **`GAME_INPUT_MANIFEST`**，内容粘贴以下 JSON，替换两个地址和两个 SHA256：
+进入 **Settings → Secrets and variables → Actions → New repository secret**，名称填写 **`GAME_INPUT_MANIFEST`**，完整粘贴以下 JSON。下载地址与 SHA256 已填好，无需替换：
 
 ```json
 {
@@ -22,30 +22,26 @@
   "files": [
     {
       "name": "game.torrent",
-      "url": "https://example.com/game.torrent",
-      "sha256": "REPLACE_WITH_TORRENT_SHA256",
-      "select": [1, 2]
+      "url": "https://gamegula.com/index.php?do=download&id=405",
+      "sha256": "016f7c907deb1f4cd6098a7cd06823907a589ff2502aa2c8b341a89ccf984266",
+      "select": [
+        1,
+        2
+      ]
     }
   ],
   "key_archive": {
-    "url": "https://example.com/keys.zip",
-    "sha256": "REPLACE_WITH_KEY_ARCHIVE_SHA256"
+    "url": "https://drive.google.com/uc?export=download&id=147IsDRRJNF_VMT6Fj50glrnqAeb7oR_1",
+    "sha256": "b73573af5eae6c9f7739ca9931cebf04774cf2ba9d6ee98f2f04c2dc88fca71c"
   }
 }
 ```
 
-| 需要替换的值 | 填写内容 |
-| --- | --- |
-| `files[0].url` | 自己的 `.torrent` 文件 HTTPS 下载直链 |
-| `files[0].sha256` | 该 `.torrent` 文件实际的 64 位十六进制 SHA256 |
-| `key_archive.url` | 自己的密钥 ZIP 下载直链，ZIP 内需恰好包含一个 `prod.keys` 文件 |
-| `key_archive.sha256` | 该密钥 ZIP 实际的 64 位十六进制 SHA256 |
+种子从 GameGula 下载，密钥 ZIP 从 Google Drive 下载。两个地址均已实际下载并核对固定 SHA256，ZIP 内包含一个 `prod.keys` 文件。
 
 种子内**第 1 项必须是本体 NSP，第 2 项是 `1.0.34.0`（`v2228224`）更新 NSP**，对应 `select: [1, 2]`，只下载这两项。合并后游戏内部版本需为 **`3.3.94012`**。上游要求包含「术士君临」资料片。
 
-地址必须直接返回文件，且下载结束前保持有效，不能使用本地路径、登录页、验证码页或网盘展示页。自己的文件地址只放进 Secret，不要把游戏文件或密钥提交到 Git。密钥 ZIP 临时读取后删除，不进入缓存或产物。
-
-macOS 使用 `shasum -a 256 文件名`，Linux 使用 `sha256sum 文件名` 获取哈希。计算的是 `.torrent` 和密钥 ZIP 文件本身。
+将这份配置保存在 Secret 中，不要把游戏文件或密钥提交到 Git。密钥 ZIP 临时读取后删除，不进入缓存或产物。
 
 ## 3. 依次运行两个工作流
 
