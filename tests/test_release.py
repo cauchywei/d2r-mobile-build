@@ -15,6 +15,12 @@ spec.loader.exec_module(module)
 
 
 class ReleaseTests(unittest.TestCase):
+    def setUp(self):
+        # Tests for standard publication must not inherit workflow_dispatch mode.
+        mode = patch.dict(os.environ, {'ICLOUD_SYNC': 'false'})
+        mode.start()
+        self.addCleanup(mode.stop)
+
     def test_new_draft_lookup_retries_until_visible(self):
         draft = {'id': 123, 'draft': True, 'assets': []}
         with patch.object(module, 'release_info', side_effect=[None, None, draft]) as lookup, patch.object(module.time, 'sleep') as sleep:

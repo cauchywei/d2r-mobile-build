@@ -60,6 +60,36 @@ Return to the app and tap **Retry**. On the first launch, the phone compiles sha
 
 **Tested on iPhone 17 Pro Max.** Initial shader compilation takes about **6 minutes** on this device. Compilation time varies by device.
 
+## Optional iCloud save sync (paid developer account required)
+
+The default build does not provision iCloud. It keeps local saves and remains compatible with free Apple ID signing. For a paid Apple Developer Program account, select these inputs in **Build D2R Mobile IPA → Run workflow**:
+
+| Input | Setting |
+| --- | --- |
+| `icloud_sync` | Enable; defaults to `false` |
+| `icloud_bundle_id` | An explicit App ID owned by your signing team, such as `com.example.d2rmobile`; no wildcard |
+| `icloud_container_id` | The container assigned to that App ID; blank uses `iCloud.<icloud_bundle_id>` |
+
+The pinned upstream shell already contains the sync code. This option prepares a separate unsigned IPA, an entitlement file and a local signing tool; it does not grant Apple capabilities or enroll an account. Download the **`D2RMobile-icloud-<run number>` Actions artifact** after the build (retained for 3 days). This mode does not update the standard Release; both modes reuse the same game resources and generated caches. IDs are public build parameters recorded in the artifact, so never enter credentials there.
+
+In Apple Developer **Certificates, Identifiers & Profiles**, enable iCloud Drive / CloudDocuments for that explicit App ID, assign its container, and regenerate a development or ad-hoc profile containing your signing certificate and target devices. Install the certificate and private key in your Mac's Keychain. **Do not upload Apple credentials, private keys or profiles to Actions.** [Apple setup instructions](https://developer.apple.com/help/account/identifiers/enable-app-capabilities/)
+
+On a Mac with Xcode, extract the artifact and run from its directory:
+
+```sh
+shasum -a 256 -c SHA256SUMS.txt
+security find-identity -v -p codesigning
+python3 icloud.py sign --ipa D2RMobile-icloud-unsigned.ipa \
+  --profile /path/to/your.mobileprovision \
+  --identity YOUR_CERTIFICATE_SHA1 --output D2RMobile-icloud-signed.ipa
+```
+
+The tool checks profile expiration, devices, certificate, explicit App ID and all three iCloud permissions before signing nested code and the app, then verifies the signature. Free-account and wildcard profiles are rejected. Install the signed IPA and import game resources as usual. Other signing tools may strip permissions or change the App ID; those paths have not been verified.
+
+Use the same iCloud account with iCloud Drive enabled, signing team, App ID, container and app version on both devices. The in-game Custom → iCloud setting defaults to on. Saves download at startup and upload when leaving a game or entering the background. Characters and shared stash sync; display/control settings stay per device and the 5.56 GB game resources do not sync. Play a character on one device at a time and allow upload to finish before opening it on the other.
+
+Back up `Documents/save` first. **Changing App ID installs a separate app**: migrate saves and resources, rather than uninstalling the old app first. CI verifies packaging and signing configuration; `icloud_sync_verified` remains `false` in the report. Upload, download and conflicts still need device validation. This option does not generate the ASTC supplement needed by older GPUs.
+
 ## Pinned versions
 
 | Component | Current setting |
@@ -130,7 +160,7 @@ Build inputs:
 - `prepare_only=true`: validate the toolchain and warm caches only; no IPA or Release is produced.
 - `input_revision`: use the same value in both workflows. Change it when replacing input files to distinguish caches and Releases.
 
-Start builds with **Run workflow** in Actions. **Release publishing happens automatically after successful builds; no separate publishing task or manually entered tag is needed.**
+Start builds with **Run workflow** in Actions. **Standard-mode Release publishing happens automatically after successful builds; no separate publishing task or manually entered tag is needed.** The optional iCloud mode uploads an independent Actions artifact instead.
 
 ## Automatic releases and outputs
 

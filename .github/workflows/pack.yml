@@ -1,5 +1,5 @@
 name: Build D2R Mobile IPA
-run-name: "${{ inputs.prepare_only && 'Verify toolchain and prime caches' || 'Build unsigned IPA' }}"
+run-name: "${{ inputs.prepare_only && 'Verify toolchain and prime caches' || inputs.icloud_sync && 'Build unsigned iCloud variant' || 'Build unsigned IPA' }}"
 on:
   workflow_dispatch:
     inputs:
@@ -11,6 +11,18 @@ on:
         description: Game input cache revision (change when replacing source files)
         type: string
         default: game-3.3.94012-v1
+      icloud_sync:
+        description: Prepare an iCloud variant (requires paid-account signing on your Mac)
+        type: boolean
+        default: false
+      icloud_bundle_id:
+        description: Explicit App ID owned by your signing team (required for iCloud only)
+        type: string
+        default: ''
+      icloud_container_id:
+        description: Container assigned to that App ID (blank means iCloud.<bundle ID>)
+        type: string
+        default: ''
 permissions:
   contents: write
 concurrency:
@@ -23,6 +35,9 @@ jobs:
     env:
       DM_ROOT: ${{ github.workspace }}/.dm-work
       INPUT_REVISION: ${{ inputs.input_revision }}
+      ICLOUD_SYNC: ${{ inputs.icloud_sync && 'true' || 'false' }}
+      ICLOUD_BUNDLE_ID: ${{ inputs.icloud_bundle_id }}
+      ICLOUD_CONTAINER_ID: ${{ inputs.icloud_container_id }}
       D2RM_NO_METAL: '1'
       PYTHONUTF8: '1'
       J: '2'
@@ -37,6 +52,7 @@ jobs:
           INPUT_REVISION: ${{ inputs.input_revision }}
         run: |
           [[ "$INPUT_REVISION" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || exit 1
+          python scripts/icloud.py validate
           python -m unittest discover -s tests -v
       - name: Checkout matching upstream release
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -176,6 +192,7 @@ jobs:
             "$DM_ROOT/data/switch/3.3.94012/Update" \
             outputs/D2RMobile-unsigned.ipa
           python scripts/ci.py verify-ipa
+          python scripts/icloud.py configure
       - name: Save generated build cache
         if: success() && steps.generated.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -192,13 +209,13 @@ jobs:
         if: ${{ !inputs.prepare_only }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: D2RMobile-unsigned-${{ github.run_number }}
-          path: outputs/
+          name: ${{ inputs.icloud_sync && 'D2RMobile-icloud' || 'D2RMobile-unsigned' }}-${{ github.run_number }}
+          path: ${{ inputs.icloud_sync && 'outputs/icloud/' || 'outputs/' }}
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
       - name: Automatically publish IPA to the matching Release
-        if: ${{ !inputs.prepare_only }}
+        if: ${{ !inputs.prepare_only && !inputs.icloud_sync }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: python -u scripts/publish_release.py ipa
@@ -236,6 +253,8 @@ jobs:
                   f.write('Toolchain verified and cached. **No game IPA was built in this preparation run.**\n')
               else:
                   f.write('Unsigned IPA built and verified; see the artifact and build-report.json.\n')
+                  if os.environ['ICLOUD_SYNC'] == 'true':
+                      f.write('**iCloud variant:** download the D2RMobile-icloud artifact, then use its icloud.py signing tool on macOS with a paid account and a matching iCloud profile. This run does not update the standard Release. Real device-to-device sync has not been verified by CI.\n\n')
                   f.write('Game cache hit: ' + os.environ['GAME_CACHE_HIT'] + '\n\n')
                   f.write('Original download cache hit: ' + os.environ['DOWNLOAD_CACHE_HIT'] + '\n\n')
                   f.write('Generated cache hit: ' + os.environ['GENERATED_CACHE_HIT'] + '\n')

@@ -1,0 +1,26 @@
+name: Packaging tests
+on:
+  pull_request:
+  push:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        icloud_sync: ['false', 'true']
+    env:
+      ICLOUD_SYNC: ${{ matrix.icloud_sync }}
+      ICLOUD_BUNDLE_ID: com.example.d2rmobile
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Validate options and run tests without game inputs or credentials
+        run: |
+          python scripts/icloud.py validate
+          python -m unittest discover -s tests -v

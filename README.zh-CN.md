@@ -60,6 +60,36 @@ copy /b D2R-Mobile-Resources.zip.001+D2R-Mobile-Resources.zip.002+D2R-Mobile-Res
 
 **本仓库产物已在 iPhone 17 Pro Max 上通过真机运行验证**，首次着色器编译约 **6 分钟**，其他机型耗时取决于设备。
 
+## 可选：iCloud 存档同步（需要付费开发者账号）
+
+普通构建默认**不配置 iCloud 权限**，继续使用本地存档，免费 Apple ID 仍可按上面的方式签名安装。付费 Apple Developer Program 账号可在 **Build D2R Mobile IPA → Run workflow** 中选择：
+
+| 参数 | 设置 |
+| --- | --- |
+| `icloud_sync` | 开启；默认 `false` |
+| `icloud_bundle_id` | 你的签名团队拥有的明确 App ID，例如 `com.example.d2rmobile`；不接受通配符 |
+| `icloud_container_id` | 已分配给该 App ID 的 iCloud 容器；留空时使用 `iCloud.<icloud_bundle_id>` |
+
+同步代码已在固定版本的上游壳中。这一选项生成一份单独的未签名 IPA、iCloud 权限文件和本机签名工具，并不代替 Apple 授权或自动开通账号。构建成功后下载 **`D2RMobile-icloud-<run number>` Actions artifact**（保留 3 天）；该模式不更新普通 Release，两种模式使用相同的游戏资源和生成缓存。App ID 和容器 ID 会写进产物，属于公开构建参数；不要填写凭据。
+
+签名前在 Apple Developer 的 **Certificates, Identifiers & Profiles** 中为这个明确 App ID 开启 iCloud Drive / CloudDocuments、分配容器，并重新生成包含你签名证书及目标设备的 development 或 ad-hoc 描述文件。将证书及私钥安装到 Mac 钥匙串；**无需也不要把 Apple 登录信息、私钥或描述文件上传到 Actions**。[Apple 配置说明](https://developer.apple.com/help/account/identifiers/enable-app-capabilities/)
+
+在安装了 Xcode 的 Mac 上，解压 artifact，在其目录执行：
+
+```sh
+shasum -a 256 -c SHA256SUMS.txt
+security find-identity -v -p codesigning
+python3 icloud.py sign --ipa D2RMobile-icloud-unsigned.ipa \
+  --profile /path/to/your.mobileprovision \
+  --identity YOUR_CERTIFICATE_SHA1 --output D2RMobile-icloud-signed.ipa
+```
+
+工具会核对描述文件的有效期、设备列表、证书、明确 App ID 和三项 iCloud 权限，然后从内到外签名并验证；免费账号或通配符描述文件会被拒绝。按既有方式安装签好的 IPA，再导入游戏资源。其他签名工具可能改掉权限或 App ID，这类路径尚未验证。
+
+两台设备须登录同一 iCloud 账号、打开 iCloud Drive，并使用相同团队、App ID、容器和应用版本。游戏「自定义」页的 iCloud 开关默认开启；启动时下载存档，保存退出一局或切到后台时上传。同步角色和共享仓库，画面与按键设置跟设备走；5.56GB 游戏资源不会同步。同一个角色轮流在两台设备上玩，等上传完成后再启动另一台。
+
+先备份 `Documents/save`。**更换 App ID 会安装成另一个应用**，需要迁移存档和资源；不要先卸载旧应用。CI 仅验证产物和签名配置，`build-report.json` 的 `icloud_sync_verified` 为 `false`；真实上传、另一台下载及冲突处理仍需真机验证。此选项也不会生成旧款 GPU 所需的 ASTC 补充包。
+
 ## 固定配套版本
 
 | 项目 | 当前配置 |
@@ -130,7 +160,7 @@ URL 必须能直接返回文件，验证码页面和网盘展示页不能用于�
 - `prepare_only=true`：只验证工具链和预热缓存，不生成 IPA、不发布 Release。
 - `input_revision`：两个工作流使用相同值；更换输入文件时修改它，区分缓存和 Release。
 
-构建通过 Actions 的 **Run workflow** 启动；**Release 发布是成功构建后的自动步骤，不需要另外运行发布任务或填写标签**。
+构建通过 Actions 的 **Run workflow** 启动；**普通模式的 Release 发布是成功构建后的自动步骤，不需要另外运行发布任务或填写标签**。iCloud 模式只上传独立 Actions artifact。
 
 ## 自动发布与产物
 

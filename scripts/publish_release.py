@@ -11,6 +11,7 @@ import time
 from urllib.parse import unquote, urlparse
 
 import ci
+from icloud import build_options
 
 PART_BYTES = 1_900_000_000  # Strictly below GitHub's 2 GiB per-asset limit.
 OUT = ci.ROOT / 'outputs'
@@ -133,6 +134,8 @@ def write_install_guide(destination):
 
 
 def main(mode):
+    if mode == 'ipa' and build_options() is not None:
+        raise ValueError('iCloud variants are Actions artifacts only; do not replace the standard Release')
     repo = os.environ['GITHUB_REPOSITORY']
     revision = os.environ['INPUT_REVISION']
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', revision):
